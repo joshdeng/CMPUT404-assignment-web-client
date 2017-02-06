@@ -23,6 +23,7 @@ import socket
 import re
 # you may use urllib to encode data appropriately
 import urllib
+from urlparse import urlparse
 
 def help():
     print "httpclient.py [GET/POST] [URL]\n"
@@ -37,16 +38,30 @@ class HTTPClient(object):
 
     def connect(self, host, port):
         # use sockets!
-        return None
+        if not port:
+            port = 80
+        clientSocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        clientSocket.connect((host, port))
+        return clientSocket
+     
 
     def get_code(self, data):
-        return None
+        data_parts = data.split('\r\n')
+        code = data_parts[0].split()[1]
+        return int(code)
 
     def get_headers(self,data):
-        return None
+        data_parts = data.split('\r\n\r\n')
+        headers = data_parts[0].split('\r\n')[1:]
+        return headers
 
     def get_body(self, data):
-        return None
+        data_parts = data.split('\r\n\r\n')
+        if(len(data_parts)>=2):
+            body = data_parts[1]
+        else:
+            body = ""
+        return body
 
     # read everything from the socket
     def recvall(self, sock):
@@ -61,13 +76,66 @@ class HTTPClient(object):
         return str(buffer)
 
     def GET(self, url, args=None):
-        code = 500
-        body = ""
+      
+        parsedUrl = urlparse(url)
+        host = parsedUrl.hostname
+        port = parsedUrl.port
+
+        path = parsedUrl.path
+
+        socket = self.connect(host,port)
+
+        request = 'GET ' + str(path) + ' HTTP/1.1\r\n' + \
+                  'Host: ' + str(host) + '\r\n' + \
+                  'User-Agent: httpclient.py\r\n' + \
+                  'Accept: */*\r\n' + \
+                  '\r\n'
+
+        socket.sendall(request)
+        response = self.recvall(socket)
+        # print(response)
+
+        code = self.get_code(response)
+        body = self.get_body(response)
+
+        socket.close()
         return HTTPResponse(code, body)
 
     def POST(self, url, args=None):
-        code = 500
-        body = ""
+        if  (len(url)==0):
+            return HTTPResponse(404,"Empty URL")
+
+        parsedUrl = urlparse(url)
+        host = parsedUrl.hostname
+        port = parsedUrl.port
+        path = parsedUrl.path
+
+        socket = self.connect(host,port)
+
+        encoded = ""
+        if (args!=None):
+            encoded = urllib.urlencode(args)
+
+        request = 'POST ' + str(path) + ' HTTP/1.1\r\n' + \
+                  'Host: ' + str(host) + '\r\n' + \
+                  'User-Agent: httpclient.py\r\n' + \
+                  'Content-Length: ' + str(len(encoded)) + '\r\n' + \
+                  'Content-Type: application/x-www-form-urlencoded\r\n' + \
+                  'Accept: */*\r\n' + \
+                  '\r\n' + \
+                  encoded
+
+        socket.sendall(request)
+
+        response = self.recvall(socket)
+
+
+        # print(response) 
+
+        code = self.get_code(response)
+        body = self.get_body(response)
+        
+        socket.close()
         return HTTPResponse(code, body)
 
     def command(self, url, command="GET", args=None):
