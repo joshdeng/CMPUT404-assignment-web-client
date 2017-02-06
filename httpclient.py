@@ -77,6 +77,8 @@ class HTTPClient(object):
         return str(buffer)
 
     def GET(self, url, args=None):
+        if  (len(url)==0):
+            return HTTPResponse(404,"Empty URL")
       
         parsedUrl = urlparse(url)
         host = parsedUrl.hostname
