@@ -23,6 +23,7 @@ import socket
 import re
 # you may use urllib to encode data appropriately
 import urllib
+# https://docs.python.org/2/library/urlparse.html
 from urlparse import urlparse
 
 def help():
